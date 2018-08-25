@@ -2,37 +2,36 @@ package api
 
 import (
 	"fmt"
-	"github.com/golang/protobuf/proto"
+	"github.com/jackrr/mta/data"
 	"github.com/jackrr/mta/pb"
-	"io/ioutil"
-	"net/http"
 )
 
 type MTA struct {
-	ApiKey string
+	f FeedGetter
 }
 
-func unmarshall(data []byte) (string, error) {
-	res := &pb.NyctFeedHeader{}
-	err := proto.Unmarshal(data, res)
-	if err != nil {
-		fmt.Printf("Unmarshall failed: %s", err)
-	}
-	return res.String(), nil
+func NewMTA(key string) MTA {
+	mta := MTA{f: NewFeedGetter(key)}
+	return mta
 }
 
-func (m MTA) GetData() {
-	url := fmt.Sprintf("http://datamine.mta.info/mta_esi.php?key=%s&feed_id=1", m.ApiKey)
-	resp, err := http.Get(url)
-	if err != nil {
-		fmt.Printf("HTTP Request failed: %s", err)
-	}
+func (m MTA) GetTrain() {
+	feed := m.f.GetFeed()
+	sr := data.NewStopReader()
+	r := data.NewRouteReader()
+	var stop data.Stop
+	var route data.Route
+	var update *pb.TripUpdate
+	var trip *pb.TripDescriptor
 
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Printf("Body to string failed: %s", err)
-	}
+	for _, entity := range feed.GetEntity() {
+		update = entity.GetTripUpdate()
+		trip = update.GetTrip()
+		route = r.GetRoute(trip.GetRouteId())
 
-	fmt.Println(unmarshall(body))
+		for _, stu := range update.GetStopTimeUpdate() {
+			stop = sr.GetStop(*stu.StopId)
+			fmt.Printf("%v - %v\n", route.Name, stop.Name)
+		}
+	}
 }

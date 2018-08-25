@@ -13,6 +13,7 @@ func main() {
 		fmt.Printf("Fail to read file: %v", err)
 		os.Exit(1)
 	}
-	m := api.MTA{ApiKey: cfg.Section("").Key("api_key").String()}
-	m.GetData()
+	apikey := cfg.Section("").Key("api_key").String()
+	m := api.NewMTA(apikey)
+	m.GetTrain()
 }
