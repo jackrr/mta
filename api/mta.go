@@ -2,12 +2,19 @@ package api
 
 import (
 	"fmt"
-	"github.com/jackrr/mta/data"
 	"github.com/jackrr/mta/pb"
+	"time"
 )
 
 type MTA struct {
 	f FeedGetter
+}
+
+type ExpectedArrival struct {
+	Stop      Stop
+	Route     Route
+	Time      time.Time
+	Direction string
 }
 
 func NewMTA(key string) MTA {
@@ -15,23 +22,55 @@ func NewMTA(key string) MTA {
 	return mta
 }
 
-func (m MTA) GetTrain() {
-	feed := m.f.GetFeed()
-	sr := data.NewStopReader()
-	r := data.NewRouteReader()
-	var stop data.Stop
-	var route data.Route
+func (m MTA) UpcomingTrains(stationName string) []string {
+	arrivals := m.expectedArrivals(stationName)
+	updates := make([]string, len(arrivals))
+	for i, arrival := range arrivals {
+		updates[i] = arrival.String()
+	}
+
+	return updates
+}
+
+func (a ExpectedArrival) String() string {
+	return fmt.Sprintf("%v - %v (%v -- %v)\n", a.Route.Name, a.Time, a.Stop.Name, a.Stop.ID)
+}
+
+func (m MTA) expectedArrivals(stationName string) []ExpectedArrival {
+	var feed pb.FeedMessage
+	var expectedArrivals []ExpectedArrival
+	var route Route
 	var update *pb.TripUpdate
 	var trip *pb.TripDescriptor
+	var arrivalTimeStamp int64
+	var stop Stop
 
-	for _, entity := range feed.GetEntity() {
-		update = entity.GetTripUpdate()
-		trip = update.GetTrip()
-		route = r.GetRoute(trip.GetRouteId())
+	sr := NewStopReader()
+	r := NewRouteReader()
+	station := sr.getStationByName(stationName)
 
-		for _, stu := range update.GetStopTimeUpdate() {
-			stop = sr.GetStop(*stu.StopId)
-			fmt.Printf("%v - %v\n", route.Name, stop.Name)
+	for _, feedID := range AllFeeds() {
+		feed = m.f.GetFeed(feedID)
+		for _, entity := range feed.GetEntity() {
+			update = entity.GetTripUpdate()
+			trip = update.GetTrip()
+			route = r.GetRoute(trip.GetRouteId())
+
+			for _, stu := range update.GetStopTimeUpdate() {
+				stop = sr.GetStop(stu.GetStopId())
+
+				if station.HasStop(stop) {
+					arrivalTimeStamp = stu.GetArrival().GetTime()
+					expectedArrivals = append(expectedArrivals, ExpectedArrival{
+						Stop:      stop,
+						Route:     route,
+						Time:      time.Unix(arrivalTimeStamp, 0),
+						Direction: trip.GetDirection(),
+					})
+				}
+			}
 		}
 	}
+
+	return expectedArrivals
 }

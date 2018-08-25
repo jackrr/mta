@@ -16,8 +16,23 @@ func NewFeedGetter(key string) FeedGetter {
 	return FeedGetter{ApiKey: key}
 }
 
-func (f FeedGetter) GetFeed() pb.FeedMessage {
-	url := fmt.Sprintf("http://datamine.mta.info/mta_esi.php?key=%s&feed_id=1", f.ApiKey)
+func AllFeeds() []int {
+	return []int{1, 26, 16, 21, 2, 11, 31, 36, 51}
+}
+
+// GetFeed Returns the feed with id specified
+// Possible ids:
+// 1	--	123456S
+// 26	--	ACES
+// 16	--	NQRW
+// 21	--	BDFM
+// 2	--	L
+// 11	--	Staten IS
+// 31	--	G
+// 36	--	JZ
+// 51	--	7
+func (f FeedGetter) GetFeed(id int) pb.FeedMessage {
+	url := fmt.Sprintf("http://datamine.mta.info/mta_esi.php?key=%s&feed_id=%d", f.ApiKey, id)
 	resp, err := http.Get(url)
 	if err != nil {
 		fmt.Printf("HTTP Request failed: %s", err)

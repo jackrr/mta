@@ -2,16 +2,11 @@
 
 ## Process
 
-1. Investigate feed data
-  - Structure (how do i identify a station? a train?)
-  - Reception mechanism (stream? poll? how does it work?)
 2. Determine how to satisfy data needs:
   - Stations matching a query string
   - All lines for a given station
   - All upcoming trains for a given station
   - Service changes for lines
-3. Determine storage mechanism
-  -
 
 ## Architecture
 

@@ -15,5 +15,7 @@ func main() {
 	}
 	apikey := cfg.Section("").Key("api_key").String()
 	m := api.NewMTA(apikey)
-	m.GetTrain()
+	for _, update := range m.UpcomingTrains("Jay St - MetroTech") {
+		fmt.Println(update)
+	}
 }
