@@ -47,6 +47,10 @@ func (sr StationManager) GetStop(id string) Stop {
 	return sr.stops[id]
 }
 
+func (sr StationManager) GetStation(id int) Station {
+	return sr.stations[id]
+}
+
 func (sr StationManager) Stops() []Stop {
 	stops := make([]Stop, 0, len(sr.stops))
 	for _, stop := range sr.stops {

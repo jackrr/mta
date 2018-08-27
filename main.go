@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/jackrr/mta/api"
+	"github.com/jackrr/mta/server"
 	"gopkg.in/ini.v1"
 	"os"
 )
@@ -14,13 +14,5 @@ func main() {
 		os.Exit(1)
 	}
 	apikey := cfg.Section("").Key("api_key").String()
-	m := api.NewMTA(apikey)
-	for _, update := range m.UpcomingTrains("Broadway (G)") {
-		fmt.Println(update)
-	}
-
-	stations := m.StationsMatching("broadway")
-	for _, st := range stations {
-		fmt.Println(st.Name)
-	}
+	server.RunServer(apikey)
 }
