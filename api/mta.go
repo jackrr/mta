@@ -7,7 +7,8 @@ import (
 )
 
 type MTA struct {
-	f FeedGetter
+	f  FeedGetter
+	sm StationManager
 }
 
 type ExpectedArrival struct {
@@ -17,9 +18,22 @@ type ExpectedArrival struct {
 	Direction string
 }
 
+type StationResponse struct {
+	Name string
+	ID   int
+}
+
 func NewMTA(key string) MTA {
-	mta := MTA{f: NewFeedGetter(key)}
+	mta := MTA{f: NewFeedGetter(key), sm: NewStationManager()}
 	return mta
+}
+
+func (m MTA) StationsMatching(query string) (res []StationResponse) {
+	stations := m.sm.StationsMatching(query)
+	for _, st := range stations {
+		res = append(res, StationResponse{ID: st.ID, Name: st.Name})
+	}
+	return res
 }
 
 func (m MTA) UpcomingTrains(stationName string) []string {
@@ -45,9 +59,9 @@ func (m MTA) expectedArrivals(stationName string) []ExpectedArrival {
 	var arrivalTimeStamp int64
 	var stop Stop
 
-	sr := NewStopReader()
 	r := NewRouteReader()
-	station := sr.getStationByName(stationName)
+	station := m.sm.getStationByName(stationName)
+	fmt.Printf("%v", station)
 
 	for _, feedID := range AllFeeds() {
 		feed = m.f.GetFeed(feedID)
@@ -57,7 +71,7 @@ func (m MTA) expectedArrivals(stationName string) []ExpectedArrival {
 			route = r.GetRoute(trip.GetRouteId())
 
 			for _, stu := range update.GetStopTimeUpdate() {
-				stop = sr.GetStop(stu.GetStopId())
+				stop = m.sm.GetStop(stu.GetStopId())
 
 				if station.HasStop(stop) {
 					arrivalTimeStamp = stu.GetArrival().GetTime()

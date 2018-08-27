@@ -1,9 +1,11 @@
 package api
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/gocarina/gocsv"
 	"os"
+	"regexp"
 )
 
 type Stop struct {
@@ -27,30 +29,44 @@ type Transfer struct {
 	Time   string `csv:"min_transfer_time"`
 }
 
-type StopReader struct {
+type StationManager struct {
 	stops          map[string]Stop
 	stations       map[int]Station
 	stationsByName map[string]int
 	nextStationID  int
 }
 
-func NewStopReader() StopReader {
-	var sr = StopReader{}
+func NewStationManager() StationManager {
+	var sr = StationManager{}
 	sr.loadStops()
 	sr.initializeStations()
 	return sr
 }
 
-func (sr StopReader) GetStop(id string) Stop {
+func (sr StationManager) GetStop(id string) Stop {
 	return sr.stops[id]
 }
 
-func (sr StopReader) Stops() []Stop {
+func (sr StationManager) Stops() []Stop {
 	stops := make([]Stop, 0, len(sr.stops))
 	for _, stop := range sr.stops {
 		stops = append(stops, stop)
 	}
 	return stops
+}
+
+func (sr StationManager) StationsMatching(query string) (stations []Station) {
+	re, err := regexp.Compile(fmt.Sprintf("(?i).*%s.*", query))
+	if err != nil {
+		return stations
+	}
+
+	for name, id := range sr.stationsByName {
+		if re.MatchString(name) {
+			stations = append(stations, sr.stations[id])
+		}
+	}
+	return stations
 }
 
 func (s Station) HasStop(stop Stop) bool {
@@ -63,7 +79,7 @@ func (s Station) HasStop(stop Stop) bool {
 	return false
 }
 
-func (sr *StopReader) loadStops() {
+func (sr *StationManager) loadStops() {
 	var stops = []Stop{}
 
 	stopsFile, err := os.OpenFile("./data/stops.csv", os.O_RDWR|os.O_CREATE, os.ModePerm)
@@ -89,7 +105,7 @@ func (sr *StopReader) loadStops() {
 	}
 }
 
-func (sr *StopReader) initializeStations() {
+func (sr *StationManager) initializeStations() {
 	var transfers = []Transfer{}
 
 	transfersFile, err := os.OpenFile("./data/transfers.csv", os.O_RDWR|os.O_CREATE, os.ModePerm)
@@ -118,10 +134,11 @@ func (sr *StopReader) initializeStations() {
 			st.addStops([]Stop{fstop, tstop})
 			st.addStops(sr.childStops(fstop))
 			st.addStops(sr.childStops(tstop))
-			sr.stations[st.ID] = st
+			sr.registerStation(st)
 		}
 	}
 
+	updatedStations := []Station{}
 	for _, station := range sr.stations {
 		stopIDSets := findDisjointStopIDSets(station.transfers)
 		if len(stopIDSets) > 1 {
@@ -134,7 +151,7 @@ func (sr *StopReader) initializeStations() {
 					stationToModify.StopIDs = []string{}
 				} else {
 					// create new station for any additional sets
-					stationToModify = sr.createStation(fmt.Sprintf("%s (%s)", station.Name, string(stopIDList[0][0])))
+					stationToModify = sr.createStation(station.Name)
 				}
 
 				for _, stopID := range stopIDList {
@@ -142,22 +159,41 @@ func (sr *StopReader) initializeStations() {
 					stationToModify.addStops([]Stop{stop})
 					stationToModify.addStops(sr.childStops(stop))
 				}
-				sr.stations[stationToModify.ID] = stationToModify
+
+				stationToModify.computeName()
+				updatedStations = append(updatedStations, stationToModify)
 			}
+		} else {
+			station.computeName()
+			updatedStations = append(updatedStations, station)
 		}
+	}
+
+	sr.resetStations()
+
+	for _, updatedStation := range updatedStations {
+		sr.registerStation(updatedStation)
 	}
 }
 
-func (sr *StopReader) createStation(name string) (s Station) {
+func (sr *StationManager) createStation(name string) (s Station) {
 	s.ID = sr.nextStationID
 	s.Name = name
-	sr.stations[s.ID] = s
-	sr.stationsByName[s.Name] = s.ID
 	sr.nextStationID++
 	return s
 }
 
-func (sr StopReader) getStationByName(name string) Station {
+func (sr *StationManager) registerStation(s Station) {
+	sr.stations[s.ID] = s
+	sr.stationsByName[s.Name] = s.ID
+}
+
+func (sr *StationManager) resetStations() {
+	sr.stations = map[int]Station{}
+	sr.stationsByName = map[string]int{}
+}
+
+func (sr StationManager) getStationByName(name string) Station {
 	return sr.stations[sr.stationsByName[name]]
 }
 
@@ -170,7 +206,29 @@ func (s *Station) addStops(stops []Stop) {
 	}
 }
 
-func (sr StopReader) childStops(s Stop) (children []Stop) {
+func (s *Station) computeName() {
+	lines := map[rune]bool{}
+	for _, stopID := range s.StopIDs {
+		lines[rune(stopID[0])] = true
+	}
+
+	var name bytes.Buffer
+
+	name.WriteString(s.Name)
+	name.WriteString(" (")
+	idx := 0
+	for line := range lines {
+		name.WriteRune(line)
+		if idx < len(lines)-1 {
+			name.WriteRune(',')
+		}
+		idx++
+	}
+	name.WriteRune(')')
+	s.Name = name.String()
+}
+
+func (sr StationManager) childStops(s Stop) (children []Stop) {
 	for _, id := range s.ChildIDs {
 		children = append(children, sr.GetStop(id))
 	}

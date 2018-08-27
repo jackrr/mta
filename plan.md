@@ -10,8 +10,6 @@
 
 ## Architecture
 
-- Feed ingestion (ProtoBuf stream?)
-- Data storage
 - HTTP server (API). Endpoints:
   - Stations matching a query string
   - Expected train arrivals at a specified station

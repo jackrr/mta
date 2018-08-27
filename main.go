@@ -15,7 +15,12 @@ func main() {
 	}
 	apikey := cfg.Section("").Key("api_key").String()
 	m := api.NewMTA(apikey)
-	for _, update := range m.UpcomingTrains("Jay St - MetroTech") {
+	for _, update := range m.UpcomingTrains("Broadway (G)") {
 		fmt.Println(update)
+	}
+
+	stations := m.StationsMatching("broadway")
+	for _, st := range stations {
+		fmt.Println(st.Name)
 	}
 }
