@@ -27,6 +27,11 @@ func NewMTA(key string) MTA {
 	return MTA{f: NewFeedGetter(key), sm: NewStationManager(), r: NewRouteReader()}
 }
 
+func (m MTA) Station(id int) StationResponse {
+	st := m.sm.GetStation(id)
+	return StationResponse{ID: st.ID, Name: st.Name}
+}
+
 func (m MTA) StationsMatching(query string) (res []StationResponse) {
 	stations := m.sm.StationsMatching(query)
 	for _, st := range stations {
