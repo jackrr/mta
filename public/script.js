@@ -65,10 +65,57 @@ function runStationPage(id) {
   })
 }
 
-var match = document.location.pathname.match(/\/stations\/(\d+)/)
+function debounce(func, delay) {
+  let eventual;
+
+  return (arg) => {
+    if (eventual) clearTimeout(eventual)
+    eventual = setTimeout(() => {
+      func(arg)
+    }, delay)
+  }
+}
+
+function searchStations(string) {
+  if (!string || string.length < 1) {
+    return Promise.resolve([])
+  }
+
+  return fetch(`/api/stations?query=${string}`)
+    .then(response => response.json())
+}
+
+function createLink(text, href) {
+  const link = document.createElement('a')
+  link.setAttribute('href', href)
+  link.textContent = text
+  return link
+}
+
+function renderNewLinks(stations) {
+  const linksArea = document.querySelector('.search-results')
+  while (linksArea.lastChild) {
+    linksArea.removeChild(linksArea.lastChild);
+  }
+  (stations || []).forEach(st => {
+    linksArea.appendChild(createLink(st.name, `/stations/${st.id}`))
+  })
+}
+
+function onInputChange(e) {
+  searchStations(e.target.value)
+  .then(renderNewLinks)
+}
+
+function runSearch() {
+  const input = document.querySelector('input.station-search')
+  input.addEventListener('keyup', debounce(onInputChange, 150))
+}
+
+const match = document.location.pathname.match(/\/stations\/(\d+)/)
 if (match) {
   var stationId = match[1]
   runStationPage(stationId)
-} else {
-  runSearchPage()
 }
+
+runSearch()
