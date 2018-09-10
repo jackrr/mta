@@ -1,0 +1,23 @@
+body {
+  background-color: black;
+}
+
+.grid {
+  padding: 20px;
+  border: 1px solid black;
+}
+
+.row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.pixel {
+  width: 4px;
+  height: 4px;
+  padding: 4px;
+}
+
+.on {
+  background-color: white;
+}

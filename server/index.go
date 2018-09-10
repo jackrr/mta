@@ -17,6 +17,7 @@ func RunServer(mtaApiKey string) {
 
 	router.Static("/public", "public")
 	router.StaticFile("/", "public/index.html")
+	router.StaticFile("/display", "public/display.html")
 	router.LoadHTMLGlob("public/*.html")
 	router.GET("/stations/:id", renderIndex)
 
